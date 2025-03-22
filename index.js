@@ -1,29 +1,38 @@
 const express = require('express');
-const axios = require('axios');
-const cheerio = require('cheerio');
+const puppeteer = require('puppeteer');  // Käytämme Puppeteeria
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.get('/op-ilmasto', async (req, res) => {
     try {
-        const url = 'https://www.op.fi/henkiloasiakkaat/saastot-ja-sijoitukset/rahastot/kaikki-rahastot';
-        const { data } = await axios.get(url);
-        const $ = cheerio.load(data);
-
-        let fundDetails = {};
-        $('div.fund-card').each((_, element) => {
-            const title = $(element).find('.fund-name').text().trim();
-            const value = $(element).find('.fund-value').text().trim();
-
-            if (title.includes('OP-Ilmasto')) {
-                fundDetails = { name: title, value: value };
-            }
+        // Käynnistetään Puppeteer
+        const browser = await puppeteer.launch({ headless: true });
+        const page = await browser.newPage();
+        
+        // Avaa OP:n rahastosivun
+        await page.goto('https://www.op.fi/henkiloasiakkaat/saastot-ja-sijoitukset/rahastot/kaikki-rahastot', {
+            waitUntil: 'networkidle2', // Odottaa, että verkkosivun kaikki pyynnöt on ladattu
         });
 
-        res.json(fundDetails);  // Palauttaa rahastotiedot JSON-muodossa
+        // Hae OP Ilmasto -rahaston arvo käyttäen valittua CSS-selainta
+        const fundValue = await page.$eval(
+            '#tab-panel-today > div > table > tbody > tr:nth-child(12) > td:nth-child(3)',  // CSS-Polku
+            element => element.innerText.trim()  // Poimitaan arvon teksti
+        );
+
+        // Suljetaan selain
+        await browser.close();
+
+        // Palautetaan rahaston arvo JSON-muodossa
+        res.json({
+            fund: 'OP Ilmasto',
+            value: fundValue
+        });
+
     } catch (error) {
-        res.status(500).json({ error: 'Tietojen haku epäonnistui' });
+        console.error('Virhe tiedon hakemisessa:', error);
+        res.status(500).json({ error: 'Tietojen haku epäonnistui.' });
     }
 });
 
