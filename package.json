@@ -1,5 +1,5 @@
 {
-  "name": "op-funds-api",
+  "name": "op-ilmasto-api",
   "version": "1.0.0",
   "description": "API, joka hakee OP Ilmasto -rahaston arvon",
   "main": "index.js",
